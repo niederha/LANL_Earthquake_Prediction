@@ -7,33 +7,33 @@ This file includes all data pre-processing methods used
 
 EXPECTED_FILE_EXTENSION = ".csv"
 DATA_DIMENSION = 2
-COLUMN_NAME = ["acoustic_data", "time_to_failure"]
+COLUMN_NAME = ['acoustic_data', 'time_to_failure']
 
-# default_file = "Data\\test\\seg_00a37e.csv"
-default_file = "Data\\train.csv"
+
 
 
 class DataPreprocessor:
+    # default_file = 'Data\\test\\seg_00a37e.csv'
+    default_file = 'Data\\train.csv'
 
     def __init__(self, file_name=default_file):
-
-        # Check file extension
-        if self._extension_is_correct(file_name):
-            self._raw_train_file = file_name
-        else:
-            print("Registering default file_name ", default_file)
-            self._raw_train_file = default_file
-
+        self.file_name = file_name
         self._data = None
         self._data_validity = False
 
-    def change_file_name(self, new_file_name):
+    @property
+    def file_name(self):
+        return self._file_name
+
+    @file_name.setter
+    def file_name(self, new_file_name):
         if self._extension_is_correct(new_file_name):
             self._data = None
-            self._raw_train_file = new_file_name
+            self._file_name = new_file_name
             self._data_validity = False
         else:
-            print("Keeping old data")
+            print("Registering default file_name ", self.default_file)
+            self._file_name = self.default_file
 
     def load_file(self):
         if self._data_validity:
@@ -47,7 +47,7 @@ class DataPreprocessor:
 
     def _open_raw_train_file(self):
         print("Loading ...")
-        self._data = pd.read_csv(self._raw_train_file)
+        self._data = pd.read_csv(self.file_name)
         print("Loading Complete")
         print("Checking data format...")
         if self._data_is_correct():
@@ -84,7 +84,7 @@ class DataPreprocessor:
                     is_correct = False
                     break
 
-        return True # TODO: Fix checks
+        return True  # TODO: Fix checks
 
     def _split_earthquakes(self, file_name):
         """The identification and splitting is done at once in a attemps to save RAM"""
