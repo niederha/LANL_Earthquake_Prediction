@@ -1,5 +1,8 @@
+# Python
 __pycache__/
 .idea/
+
+# Data and compressed files (too havy to upload)
 Data/
 *.csv
 *.zip
