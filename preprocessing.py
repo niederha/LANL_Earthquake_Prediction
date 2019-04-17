@@ -14,7 +14,8 @@ ppg.VERBOSE = ppg.VerboseLevel.FRIVOLOUS
 
 class DataPreprocessor:
     # default_file = 'Data\\test\\seg_00a37e.csv'
-    default_file = 'test_checks.csv'
+    default_file = 'Data\\train.csv'
+    # default_file = 'test_checks.csv'
 
     def __init__(self, file_name=default_file):
         self.file_name = file_name
