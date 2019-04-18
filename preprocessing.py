@@ -19,7 +19,6 @@ class DataPreprocessor:
 
     def __init__(self, file_name=default_file):
         self.file_name = file_name
-        self._data = None
         self._data_validity = False
 
     @property
@@ -36,45 +35,56 @@ class DataPreprocessor:
             ppg.log_info("Registering default file_name", self.default_file)
             self._file_name = self.default_file
 
-    def load_file(self):
-        if self._data_validity:
-            ppg.log_info("Data already checked and loaded.")
-        else:
-            self._open_raw_train_file()
-
     def split_file(self, output_file_name):
-        if not self._data_validity:
-            self._open_raw_train_file()
-        self._split_earthquakes(output_file_name)
+        chunk_size = 10**6
+        first_iteration = True
+        buffer = None
+        eq_number = 0
 
-    def _open_raw_train_file(self):
-        ppg.log_frivolity("Loading ...")
-        self._data = pd.read_csv(self.file_name)
-        ppg.log_frivolity("Loading complete.")
-        ppg.log_frivolity("Checking data format...")
-        if self._data_is_correct():
-            self._data_validity = True
-        else:
-            self._data_validity = False
-        ppg.log_frivolity("Data format checked.")
+        for chunk in pd.read_csv(self.file_name, chunksize=chunk_size):
+            if first_iteration:
+                if not self._data_is_correct(chunk):
+                    ppg.mock_error("Incorrect data format. Abort splitting.")
+                    return
+                else:
+                    ppg.log_info("Data format correct.")
+                    first_iteration = False
+            if buffer is None:
+                buffer = chunk.copy()
+            else:
+                before_eq, after_eq = self._split_on_eq(chunk)
+                if after_eq is not None:
+                    pd.concat(buffer, before_eq)
+                    eq_number = self._save_eq(buffer, output_file_name, eq_number)
+                    buffer = after_eq.copy()
+                else:
+                    if self._is_split_on_eq(buffer, chunk):
 
-    def _data_is_correct(self):
+
+
+    def _save_eq(self, data, file_name, index):
+        new_name = file_name + str(index) + EXPECTED_FILE_EXTENSION
+        data.to_csv(new_name, index=True)
+        next_index = index+1
+        return next_index
+
+    def _data_is_correct(self, data):
         is_correct = True
 
-        if self._data is None:
+        if data is None:
             ppg.mock_warning("Caution data frame empty. Check loading sequence or file content.")
             is_correct = False
-        elif type(self._data) is not pd.core.frame.DataFrame:
+        elif type(data) is not pd.core.frame.DataFrame:
             ppg.mock_warning("Unexpected type. Data should be a pandas.DataFrame")
             is_correct = False
-        elif self._data.ndim != DATA_DIMENSION:
-            ppg.mock_warning("Number of dimensions incorrect. Is", self._data.ndim, "Expected:", DATA_DIMENSION)
+        elif data.ndim != DATA_DIMENSION:
+            ppg.mock_warning("Number of dimensions incorrect. Is", data.ndim, "Expected:", DATA_DIMENSION)
             is_correct = False
-        elif self._data.shape[-1] != len(COLUMN_NAME):
-            ppg.mock_warning("Number of columns is incorrect. Is", self._data.shape[-1], "Expected", len(COLUMN_NAME))
+        elif data.shape[-1] != len(COLUMN_NAME):
+            ppg.mock_warning("Number of columns is incorrect. Is", data.shape[-1], "Expected", len(COLUMN_NAME))
             is_correct = False
         else:
-            for names in zip(self._data.columns, COLUMN_NAME):
+            for names in zip(data.columns, COLUMN_NAME):
                 if names[0] != names[1]:
                     ppg.mock_warning("Unexpected column name:", names[0], "Expected:", names[1])
                     is_correct = False
