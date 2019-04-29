@@ -6,11 +6,13 @@ import pandas as pd
 from papagei import papagei as ppg
 import os
 
+# Debug options
+ppg.VERBOSE = ppg.VerboseLevel.FRIVOLOUS
+
+# Training file formats
 EXPECTED_FILE_EXTENSION = '.csv'
 DATA_DIMENSION = 2
 COLUMN_NAME = ['acoustic_data', 'time_to_failure']
-ppg.VERBOSE = ppg.VerboseLevel.FRIVOLOUS
-
 
 class DataPreprocessor:
     # default_file = 'Data\\test\\seg_00a37e.csv'
@@ -49,18 +51,23 @@ class DataPreprocessor:
                 else:
                     ppg.log_info("Data format correct.")
                     first_iteration = False
+
+            # Checks if we just split on an earthquake
+            if self._is_split_on_eq(buffer, chunk):
+                eq_number = self._save_eq(buffer, output_file_name, eq_number)
+                buffer = None
+
+            # Complete the buffer
+            before_eq, after_eq = self._split_on_eq(chunk)
             if buffer is None:
-                buffer = chunk.copy()
+                buffer = before_eq.copy()
             else:
-                before_eq, after_eq = self._split_on_eq(chunk)
-                if after_eq is not None:
-                    pd.concat(buffer, before_eq)
-                    eq_number = self._save_eq(buffer, output_file_name, eq_number)
-                    buffer = after_eq.copy()
-                else:
-                    if self._is_split_on_eq(buffer, chunk):
+                buffer = pd.concat(buffer, before_eq)
 
-
+            # Save the buffer if there have been an earthquake
+            if after_eq is not None:
+                eq_number = self._save_eq(buffer, output_file_name, eq_number)
+                buffer = after_eq.copy()
 
     def _save_eq(self, data, file_name, index):
         new_name = file_name + str(index) + EXPECTED_FILE_EXTENSION
@@ -92,6 +99,17 @@ class DataPreprocessor:
         if is_correct:
             ppg.log_debug("Correct data format.")
         return is_correct
+
+    def _spilt_on_eq(self, data):
+        prev_time = data.loc[0, COLUMN_NAME[1]]
+        for i, current_time in enumerate(data.loc[1:, COLUMN_NAME[1]]):
+            if current_time >= prev_time:
+                ppg.log_debug("New earthquake")
+                if prev_time != 0:
+                    ppg.log_debug("Time artifact. Earthquake is ", prev_time)
+                break
+        else:
+            return data, None
 
     def _split_earthquakes(self, file_name):
         """The identification and splitting is done at once in a attempt to save RAM"""
