@@ -10,6 +10,7 @@ from papagei import papagei as ppg
 max_acoustic = 1.
 min_acoustic = -1.
 
+
 def generate_random_training(file_name, nb_points):
     """
     Generates a file containing dummy data formatted like the train sets from Kaggle
@@ -52,7 +53,7 @@ def _format_file_extension(file_name):
 
 def _generate_random_acoustic(nb_points):
     """
-    Generates an array [nb_points X DATA_DIMENSION-1] and fills it with random numbers from min_acoustic to max_acoustis.
+    Generates an array [nb_points x DATA_DIMENSION-1] and fills it with random numbers from min_acoustic to max_acoustis.
         :param nb_points: number of points to include in the array
         :return: an array filled with random points.
     """
