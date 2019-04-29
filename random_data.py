@@ -22,7 +22,7 @@ def generate_random_training(file_name, nb_points):
     acoustic_data = _generate_random_acoustic(nb_points)
     acoustic_data = np.concatenate((acoustic_data, np.ones((nb_points, 1))), axis=1)
     data = pd.DataFrame(acoustic_data, columns=fmd.COLUMN_NAME)
-    data.to_csv(file_name, index=True)
+    data.to_csv(file_name, index=False)
 
 
 def generate_random_testing(file_name, nb_points):
@@ -35,7 +35,7 @@ def generate_random_testing(file_name, nb_points):
     file_name = _format_file_extension(file_name)
     acoustic_data = _generate_random_acoustic(nb_points)
     data = pd.DataFrame(acoustic_data, columns=[fmd.COLUMN_NAME[0]])
-    data.to_csv(file_name, index=True)
+    data.to_csv(file_name, index=False)
 
 
 def _format_file_extension(file_name):

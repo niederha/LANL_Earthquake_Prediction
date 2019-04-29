@@ -10,8 +10,6 @@ import os
 # Debug options
 ppg.VERBOSE = ppg.VerboseLevel.FRIVOLOUS
 
-# Training file formats
-
 
 class DataPreprocessor:
     # default_file = 'Data\\test\\seg_00a37e.csv'
@@ -20,7 +18,6 @@ class DataPreprocessor:
 
     def __init__(self, file_name=default_file):
         self.file_name = file_name
-        self._data_validity = False
 
     @property
     def file_name(self):
@@ -99,47 +96,22 @@ class DataPreprocessor:
             ppg.log_debug("Correct data format.")
         return is_correct
 
-    def _spilt_on_eq(self, data):
-        prev_time = data.loc[0, fmd.COLUMN_NAME[1]]
-        for i, current_time in enumerate(data.loc[1:, fmd.COLUMN_NAME[1]]):
+    def _is_split_on_eq(self, buffer, chunk):
+        is_split_on_eq = False
+        if buffer.iloc[-1, fmd.Column.TTF.value] < chunk.iloc[0, fmd.Column.TTF.value]:
+            is_split_on_eq = True
+        return is_split_on_eq
+
+    def _split_on_eq(self, data):
+        prev_time = data.loc[0, fmd.COLUMN_NAME[fmd.Column.TTF.value]]
+        for i, current_time in enumerate(data.loc[1:, fmd.COLUMN_NAME[fmd.Column.TTF.value]]):
             if current_time >= prev_time:
-                ppg.log_debug("New earthquake")
+                ppg.log_debug("New earthquake @", data.iloc[i, 0].name)
                 if prev_time != 0:
                     ppg.log_debug("Time artifact. Earthquake is ", prev_time)
-                break
+                return data.iloc[0:i, :], data.iloc[i+1:, :]
         else:
             return data, None
-
-    def _split_earthquakes(self, file_name):
-        """The identification and splitting is done at once in a attempt to save RAM"""
-        previous_eq = 0
-        eq_number = 0
-        if not self._data_validity or self._data is None:
-            ppg.mock_warning("Cannot look for earthquake. Data not valid")
-        else:
-            prev_time = self._data.loc[0, fmd.COLUMN_NAME[1]]
-            for i, current_time in enumerate(self._data.loc[1:, fmd.COLUMN_NAME[1]]):
-
-                # Earthquake detected
-                if current_time >= prev_time:
-
-                    # Display infos
-                    ppg.log_debug("New earthquake @ index ", i)
-                    if prev_time != 0:
-                        ppg.log_debug("Time artifact. Earthquake is ", prev_time)
-
-                    # Save file
-                    new_name = file_name + str(eq_number) + fmd.EXPECTED_FILE_EXTENSION
-                    buffer = self._data.loc[previous_eq:i, :]
-                    self._data.drop(list(range(previous_eq+1, i)))
-                    buffer.to_csv(new_name, index=True)
-
-                    # Update indices
-                    eq_number += 1
-                    buffer = None
-                    previous_eq = i+1
-
-                prev_time = current_time
 
     @staticmethod
     def _extension_is_correct(file_name):
