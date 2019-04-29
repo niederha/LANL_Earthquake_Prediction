@@ -3,6 +3,7 @@ This file includes all data pre-processing methods used
 """
 
 import pandas as pd
+import files_metadata as fmd
 from papagei import papagei as ppg
 import os
 
@@ -10,9 +11,7 @@ import os
 ppg.VERBOSE = ppg.VerboseLevel.FRIVOLOUS
 
 # Training file formats
-EXPECTED_FILE_EXTENSION = '.csv'
-DATA_DIMENSION = 2
-COLUMN_NAME = ['acoustic_data', 'time_to_failure']
+
 
 class DataPreprocessor:
     # default_file = 'Data\\test\\seg_00a37e.csv'
@@ -70,7 +69,7 @@ class DataPreprocessor:
                 buffer = after_eq.copy()
 
     def _save_eq(self, data, file_name, index):
-        new_name = file_name + str(index) + EXPECTED_FILE_EXTENSION
+        new_name = file_name + str(index) + fmd.EXPECTED_FILE_EXTENSION
         data.to_csv(new_name, index=True)
         next_index = index+1
         return next_index
@@ -84,14 +83,14 @@ class DataPreprocessor:
         elif type(data) is not pd.core.frame.DataFrame:
             ppg.mock_warning("Unexpected type. Data should be a pandas.DataFrame")
             is_correct = False
-        elif data.ndim != DATA_DIMENSION:
-            ppg.mock_warning("Number of dimensions incorrect. Is", data.ndim, "Expected:", DATA_DIMENSION)
+        elif data.ndim != fmd.DATA_DIMENSION:
+            ppg.mock_warning("Number of dimensions incorrect. Is", data.ndim, "Expected:", fmd.DATA_DIMENSION)
             is_correct = False
-        elif data.shape[-1] != len(COLUMN_NAME):
-            ppg.mock_warning("Number of columns is incorrect. Is", data.shape[-1], "Expected", len(COLUMN_NAME))
+        elif data.shape[-1] != len(fmd.COLUMN_NAME):
+            ppg.mock_warning("Number of columns is incorrect. Is", data.shape[-1], "Expected", len(fmd.COLUMN_NAME))
             is_correct = False
         else:
-            for names in zip(data.columns, COLUMN_NAME):
+            for names in zip(data.columns, fmd.COLUMN_NAME):
                 if names[0] != names[1]:
                     ppg.mock_warning("Unexpected column name:", names[0], "Expected:", names[1])
                     is_correct = False
@@ -101,8 +100,8 @@ class DataPreprocessor:
         return is_correct
 
     def _spilt_on_eq(self, data):
-        prev_time = data.loc[0, COLUMN_NAME[1]]
-        for i, current_time in enumerate(data.loc[1:, COLUMN_NAME[1]]):
+        prev_time = data.loc[0, fmd.COLUMN_NAME[1]]
+        for i, current_time in enumerate(data.loc[1:, fmd.COLUMN_NAME[1]]):
             if current_time >= prev_time:
                 ppg.log_debug("New earthquake")
                 if prev_time != 0:
@@ -118,8 +117,8 @@ class DataPreprocessor:
         if not self._data_validity or self._data is None:
             ppg.mock_warning("Cannot look for earthquake. Data not valid")
         else:
-            prev_time = self._data.loc[0, COLUMN_NAME[1]]
-            for i, current_time in enumerate(self._data.loc[1:, COLUMN_NAME[1]]):
+            prev_time = self._data.loc[0, fmd.COLUMN_NAME[1]]
+            for i, current_time in enumerate(self._data.loc[1:, fmd.COLUMN_NAME[1]]):
 
                 # Earthquake detected
                 if current_time >= prev_time:
@@ -130,7 +129,7 @@ class DataPreprocessor:
                         ppg.log_debug("Time artifact. Earthquake is ", prev_time)
 
                     # Save file
-                    new_name = file_name + str(eq_number) + EXPECTED_FILE_EXTENSION
+                    new_name = file_name + str(eq_number) + fmd.EXPECTED_FILE_EXTENSION
                     buffer = self._data.loc[previous_eq:i, :]
                     self._data.drop(list(range(previous_eq+1, i)))
                     buffer.to_csv(new_name, index=True)
@@ -146,7 +145,7 @@ class DataPreprocessor:
     def _extension_is_correct(file_name):
         """ Checks if the extension of file_name corresponds to the expected extension for data files """
         is_correct = True
-        if file_name[-len(EXPECTED_FILE_EXTENSION):] != EXPECTED_FILE_EXTENSION:
+        if file_name[-len(fmd.EXPECTED_FILE_EXTENSION):] != fmd.EXPECTED_FILE_EXTENSION:
             ppg.mock_warning("Unexpected file extension.")
             is_correct = False
         return is_correct
