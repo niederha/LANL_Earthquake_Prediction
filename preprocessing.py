@@ -1,5 +1,5 @@
 """
-This file includes all data pre-processing, parsing and splitting methods to be used
+This file includes all data pre-processing, parsing and splitting methods to be used.
 """
 
 import pandas as pd
@@ -20,13 +20,16 @@ class DataSplitting:
 
     @property
     def file_name(self):
+        """
+        File to read the data from and to split.
+        """
         return self._file_name
 
     @file_name.setter
     def file_name(self, new_file_name):
         """
         Checks if the file name provided is correct and, if so changes the reference file to look at.
-            :param new_file_name: New file to be split later
+            :param new_file_name: New file to be split later.
         """
         if self._file_exists(new_file_name) and self._extension_is_correct(new_file_name):
             self._data = None
@@ -84,7 +87,7 @@ class DataSplitting:
     def _data_is_correct(self, data):
         """
         Checks if the data have the expected formatting.
-            :param data: data-frame of which the format has to be checked
+            :param data: data-frame of which the format has to be checked.
             :return: True if the format is correct, False if not.
         """
         is_correct = True
@@ -121,9 +124,9 @@ class DataSplitting:
 
     def _split_on_eq(self, data):
         """
-        Checks the data to find earthquake by looking for positive slope between two consecutive time to failure (TTF)
-            :param data: Data that has to be inspected to find earthquakes
-            :return before_eq: Part of the data frame that occurs before the earthquake
+        Checks the data to find earthquake by looking for positive slope between two consecutive time to failure (TTF).
+            :param data: Data that has to be inspected to find earthquakes.
+            :return before_eq: Part of the data frame that occurs before the earthquake.
             :return after_eq: Part of the data frame the occurs after the earthquake. Can be None it no earthquake is
                               detected.
         """
@@ -143,10 +146,10 @@ class DataSplitting:
     def _save_eq(self, data, file_name, index):
         """
         Saves a data frame "data" as a csv file starting with "file_name" followed by index. Returns the nest index.
-            :param data: Data frame to be saved
-            :param file_name: First part of the name under which to save the data
-            :param index: Number to add after file_name
-            :return next_index: Following index to be used
+            :param data: Data frame to be saved.
+            :param file_name: First part of the name under which to save the data.
+            :param index: Number to add after file_name.
+            :return next_index: Following index to be used.
         """
         ppg.log_debug("Saving data... (this might take a few seconds)")
         new_name = file_name + str(index) + fmd.EXPECTED_FILE_EXTENSION
@@ -156,10 +159,10 @@ class DataSplitting:
 
     def _is_split_on_eq(self, buffer, chunk):
         """
-        Checks if an earthquake occurred between buffer(dataframe) and chunk(dataframe)
-        :param buffer: Data frame occurring first
-        :param chunk: Data frame following directly buffer
-        :return is_split_on_eq: True if there is an earthquake between buffer and chunk, false else
+        Checks if an earthquake occurred between buffer(dataframe) and chunk(dataframe).
+            :param buffer: Data frame occurring first.
+            :param chunk: Data frame following directly buffer.
+            :return is_split_on_eq: True if there is an earthquake between buffer and chunk, false else.
         """
         is_split_on_eq = False
         if buffer is not None and chunk is not None:
@@ -169,7 +172,11 @@ class DataSplitting:
 
     @staticmethod
     def _extension_is_correct(file_name):
-        """ Checks if the extension of file_name corresponds to the expected extension for data files """
+        """
+        Checks if the extension of file_name corresponds to the expected extension for data files.
+            :param file_name: File of which the extension has tobe checked.
+            :return: True if the extension is correct, False else.
+        """
         is_correct = True
         if file_name[-len(fmd.EXPECTED_FILE_EXTENSION):] != fmd.EXPECTED_FILE_EXTENSION:
             ppg.mock_warning("Unexpected file extension.")
@@ -178,7 +185,11 @@ class DataSplitting:
 
     @staticmethod
     def _file_exists(file_name):
-        """ Checks if a file with file_name exists"""
+        """
+        Checks if a file with file_name exists.
+            :param file_name: File of which the existence has to be checked.
+            :return: True if file_name exists, False else.
+        """
         exists = os.path.isfile(file_name)
         if not exists:
             ppg.mock_warning("File", file_name, "not found")

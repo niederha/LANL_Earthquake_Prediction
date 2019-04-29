@@ -13,10 +13,10 @@ min_acoustic = -1.
 
 def generate_random_training(file_name, nb_points):
     """
-    Generates a file containing dummy data formatted like the train sets from Kaggle
-        :param file_name: Name under which to save the dummy data. Has to be a .csv file or it will be reformatted
-        :param nb_points: Number of points to include in the dummy data
-        :return: Saves a file in CSV format
+    Generates a file containing dummy data formatted like the train sets from Kaggle.
+        :param file_name: Name under which to save the dummy data. Has to be a .csv file or it will be reformatted.
+        :param nb_points: Number of points to include in the dummy data.
+        :return: Saves a file in CSV format.
     """
     file_name = _format_file_extension(file_name)
     acoustic_data = _generate_random_acoustic(nb_points)
@@ -27,10 +27,10 @@ def generate_random_training(file_name, nb_points):
 
 def generate_random_testing(file_name, nb_points):
     """
-    Generates a file containing dummy data formatted like the test sets from Kaggle
-        :param file_name: Name under which to save the dummy data. Has to be a .csv file or it will be reformatted
-        :param nb_points: Number of points to include in the dummy data
-        :return: Saves a file in CSV format
+    Generates a file containing dummy data formatted like the test sets from Kaggle.
+        :param file_name: Name under which to save the dummy data. Has to be a .csv file or it will be reformatted.
+        :param nb_points: Number of points to include in the dummy data.
+        :return: Saves a file in CSV format.
     """
     file_name = _format_file_extension(file_name)
     acoustic_data = _generate_random_acoustic(nb_points)
@@ -41,8 +41,8 @@ def generate_random_testing(file_name, nb_points):
 def _format_file_extension(file_name):
     """
     Takes a file_name and if the extension is not the expected one reformats it to get the right extension.
-        :param file_name: file name to be checked/reformatted
-        :return: reformatted file name
+        :param file_name: file name to be checked/reformatted.
+        :return: reformatted file name.
     """
     if file_name[-len(fmd.EXPECTED_FILE_EXTENSION):] != fmd.EXPECTED_FILE_EXTENSION:
         ppg.mock_warning("Unexpected file extension.")
@@ -53,8 +53,9 @@ def _format_file_extension(file_name):
 
 def _generate_random_acoustic(nb_points):
     """
-    Generates an array [nb_points x DATA_DIMENSION-1] and fills it with random numbers from min_acoustic to max_acoustis.
-        :param nb_points: number of points to include in the array
+    Generates an array [nb_points x DATA_DIMENSION-1] and fills it with random numbers from min_acoustic to
+    max_acoustics.
+        :param nb_points: number of points to include in the array.
         :return: an array filled with random points.
     """
     mean_acoustic = (max_acoustic + min_acoustic) / 2.
