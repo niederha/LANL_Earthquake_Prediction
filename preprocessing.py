@@ -12,9 +12,8 @@ ppg.VERBOSE = ppg.VerboseLevel.FRIVOLOUS
 
 
 class DataPreprocessor:
-    # default_file = 'Data\\test\\seg_00a37e.csv'
+
     default_file = 'Data\\train.csv'
-    # default_file = 'test_checks.csv'
 
     def __init__(self, file_name=default_file):
         self.file_name = file_name
@@ -38,8 +37,10 @@ class DataPreprocessor:
         first_iteration = True
         buffer = None
         eq_number = 0
-
+        i = 0
         for chunk in pd.read_csv(self.file_name, chunksize=chunk_size):
+            ppg.log_frivolity("Iteration", i)
+            i += 1
             if first_iteration:
                 if not self._data_is_correct(chunk):
                     ppg.mock_error("Incorrect data format. Abort splitting.")
@@ -49,7 +50,7 @@ class DataPreprocessor:
                     first_iteration = False
 
             # Checks if we just split on an earthquake
-            if self._is_split_on_eq(buffer, chunk):
+            if buffer is not None and self._is_split_on_eq(buffer, chunk):
                 eq_number = self._save_eq(buffer, output_file_name, eq_number)
                 buffer = None
 
@@ -58,7 +59,7 @@ class DataPreprocessor:
             if buffer is None:
                 buffer = before_eq.copy()
             else:
-                buffer = pd.concat(buffer, before_eq)
+                buffer = pd.concat([buffer, before_eq])
 
             # Save the buffer if there have been an earthquake
             if after_eq is not None:
@@ -66,6 +67,7 @@ class DataPreprocessor:
                 buffer = after_eq.copy()
 
     def _save_eq(self, data, file_name, index):
+        ppg.log_debug("Saving data... (this might take a few seconds)")
         new_name = file_name + str(index) + fmd.EXPECTED_FILE_EXTENSION
         data.to_csv(new_name, index=True)
         next_index = index+1
@@ -103,13 +105,15 @@ class DataPreprocessor:
         return is_split_on_eq
 
     def _split_on_eq(self, data):
-        prev_time = data.loc[0, fmd.COLUMN_NAME[fmd.Column.TTF.value]]
-        for i, current_time in enumerate(data.loc[1:, fmd.COLUMN_NAME[fmd.Column.TTF.value]]):
+        prev_time = data.iloc[0, fmd.Column.TTF.value]
+        for i, current_time in enumerate(data.iloc[1:, fmd.Column.TTF.value]):
             if current_time >= prev_time:
-                ppg.log_debug("New earthquake @", data.iloc[i, 0].name)
+                ppg.log_debug("New earthquake @", data.iloc[i, :].name)
                 if prev_time != 0:
                     ppg.log_debug("Time artifact. Earthquake is ", prev_time)
                 return data.iloc[0:i, :], data.iloc[i+1:, :]
+            else:
+                prev_time = current_time
         else:
             return data, None
 
