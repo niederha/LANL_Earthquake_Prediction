@@ -153,7 +153,7 @@ class DataSplitting:
         """
         ppg.log_debug("Saving data... (this might take a few seconds)")
         new_name = file_name + str(index) + fmd.EXPECTED_FILE_EXTENSION
-        data.to_csv(new_name, index=True)
+        data.to_csv(new_name, index=True, header=fmd.SPLIT_FILE_COLUMN_NAME)
         next_index = index+1
         return next_index
 
