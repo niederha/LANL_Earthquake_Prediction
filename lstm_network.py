@@ -1,7 +1,7 @@
 
 import tensorflow as tf
 from tensorflow.python.keras.models import Sequential
-from tensorflow.python.keras.layers import Dense, Dropout, CuDNNLSTM, LSTM
+from tensorflow.python.keras.layers import Dense, Dropout, CuDNNLSTM, BatchNormalization
 
 from papagei import papagei as ppg
 
@@ -18,17 +18,21 @@ class NetworkLSTM:
         # Model building
         model = Sequential()
 
-        # Initial layer
-        model.add(CuDNNLSTM(lstm_layers_size[0], input_size=1, return_sequences=True))  # TODO: Sort the input shape thingy and chek the return sequence thingy
-        model.add(Dropout(dropout_rate))
-
-        for layer_size in lstm_layers_size[1:]:
-            model.add(CuDNNLSTM(layer_size))
+        # LSTM layers
+        for layer_size in lstm_layers_size[:-1]:
+            model.add(CuDNNLSTM(layer_size, input_size=1, return_sequences=True))  # TODO: Sort the input shape thingy and chek the return sequence thingy
             model.add(Dropout(dropout_rate))
+            model.add(BatchNormalization())
 
+        # Last LSTM layer
+        model.add(CuDNNLSTM(lstm_layers_size[-1]))
+        model.add(Dropout(dropout_rate))
+        model.add(BatchNormalization())
+
+        # Dense output layers
         model.add(Dense(32, activation='relu'))
         model.add(Dropout(dropout_rate))
-        model.add(Dense(10, activation='softmax'))
+        model.add(Dense(10, activation='relu'))
 
         opt = tf.keras.optimizers.Adam(lr=learning_rate)
 
