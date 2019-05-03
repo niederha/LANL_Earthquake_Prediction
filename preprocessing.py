@@ -3,9 +3,10 @@ This file includes all data pre-processing, parsing and splitting methods to be 
 """
 
 import pandas as pd
+import os
+
 import files_metadata as fmd
 from papagei import papagei as ppg
-import os
 
 # Debug options
 ppg.VERBOSE = ppg.VerboseLevel.FRIVOLOUS
@@ -13,10 +14,13 @@ ppg.VERBOSE = ppg.VerboseLevel.FRIVOLOUS
 
 class DataSplitting:
 
-    default_file = 'Data\\train.csv'
 
-    def __init__(self, file_name=default_file):
-        self.file_name = file_name
+
+    def __init__(self, read_file_name=default_read_file, output_file_name=default_output_file):
+        self.file_name = read_file_name
+        self.output_file_name = output_file_name
+        self._nb_earthquake = 0  # Number of earthquakes detected over the whole file.
+        self._file_size = []  # Number of samples for each earthquake.
 
     @property
     def file_name(self):
@@ -39,18 +43,26 @@ class DataSplitting:
             ppg.log_info("Registering default file_name", self.default_file)
             self._file_name = self.default_file
 
-    def split_file(self, output_file_name):
+    @property
+    def output_file_name(self):
+        return self._output_file_name
+
+    @output_file_name.setter
+    def output_file_name(self, new_output_file_name):
+        self._output_file_name = new_output_file_name.replace(".", "_")
+
+    def split_file(self):
         """
         Goes through the file designated by self.file_name. Identifies earthquakes and save them in separated files
-        named "output_file_name+earthquake_number+.csv".
-            :param output_file_name: prefix of the saved file containing one earthquake each.
+        named "self.output_file_name+earthquake_number+.csv".
         """
 
         chunk_size = 10**6  # Number of lines to be read from the raw file at once. Reduce to spare RAM
         buffer = None       # Stores earthquakes before they are completed
-        eq_number = 0       # Earthquake identifier
 
         # Iteration variables
+        self._nb_earthquake = 0
+        self._file_size = []
         first_iteration = True
         i = 0
 
@@ -69,7 +81,7 @@ class DataSplitting:
 
             # Checks if the earthquake occurred between previous and current chunk
             if buffer is not None and self._is_split_on_eq(buffer, chunk):
-                eq_number = self._save_eq(buffer, output_file_name, eq_number)
+                self._save_eq(buffer)
                 buffer = None
 
             # Complete the buffer
@@ -81,10 +93,58 @@ class DataSplitting:
 
             # Save the buffer if there have been an earthquake
             if after_eq is not None:
-                eq_number = self._save_eq(buffer, output_file_name, eq_number)
+                self._save_eq(buffer)
                 buffer = after_eq.copy()
 
-    def _data_is_correct(self, data):
+    def _split_on_eq(self, data):
+        """
+        Checks the data to find earthquake by looking for positive slope between two consecutive time to failure (TTF).
+            :param data: Data that has to be inspected to find earthquakes.
+            :return before_eq: Part of the data frame that occurs before the earthquake.
+            :return after_eq: Part of the data frame the occurs after the earthquake. Can be None it no earthquake is
+                              detected.
+        """
+        prev_time = data.iloc[0, fmd.Column.TTF.value]
+        for i, current_time in enumerate(data.iloc[1:, fmd.Column.TTF.value]):
+            # If TTF increases then it is an earthquake.
+            if current_time >= prev_time:
+                ppg.log_debug("New earthquake @", data.iloc[i, :].name)
+                if prev_time != 0:
+                    ppg.log_debug("Time artifact. Earthquake is ", prev_time)
+                return data.iloc[0:i, :], data.iloc[i+1:, :]  # TODO: Don't assume there won't be two earthquakes in one chunk
+            else:
+                prev_time = current_time
+        else:
+            return data, None  # No earthquake occurred
+
+    def _save_eq(self, data):
+        """
+        Saves a data frame "data" as a csv file starting with "file_name" followed by index. Returns the nest index.
+            :param data: Data frame to be saved.
+            :return next_index: Following index to be used.
+        """
+        ppg.log_debug("Saving data... (this might take a few seconds)")
+        new_name = self.output_file_name + str(self._nb_earthquake) + fmd.EXPECTED_FILE_EXTENSION
+        data.to_csv(new_name, index=False)
+        self._nb_earthquake += 1
+        self._file_size.append(len(data))
+
+    @staticmethod
+    def _is_split_on_eq(buffer, chunk):
+        """
+        Checks if an earthquake occurred between buffer(dataframe) and chunk(dataframe).
+            :param buffer: Data frame occurring first.
+            :param chunk: Data frame following directly buffer.
+            :return is_split_on_eq: True if there is an earthquake between buffer and chunk, false else.
+        """
+        is_split_on_eq = False
+        if buffer is not None and chunk is not None:
+            if buffer.iloc[-1, fmd.Column.TTF.value] < chunk.iloc[0, fmd.Column.TTF.value]:
+                is_split_on_eq = True
+        return is_split_on_eq
+
+    @staticmethod
+    def _data_is_correct(data):
         """
         Checks if the data have the expected formatting.
             :param data: data-frame of which the format has to be checked.
@@ -121,54 +181,6 @@ class DataSplitting:
         if is_correct:
             ppg.log_debug("Correct data format.")
         return is_correct
-
-    def _split_on_eq(self, data):
-        """
-        Checks the data to find earthquake by looking for positive slope between two consecutive time to failure (TTF).
-            :param data: Data that has to be inspected to find earthquakes.
-            :return before_eq: Part of the data frame that occurs before the earthquake.
-            :return after_eq: Part of the data frame the occurs after the earthquake. Can be None it no earthquake is
-                              detected.
-        """
-        prev_time = data.iloc[0, fmd.Column.TTF.value]
-        for i, current_time in enumerate(data.iloc[1:, fmd.Column.TTF.value]):
-            # If TTF increases then it is an earthquake.
-            if current_time >= prev_time:
-                ppg.log_debug("New earthquake @", data.iloc[i, :].name)
-                if prev_time != 0:
-                    ppg.log_debug("Time artifact. Earthquake is ", prev_time)
-                return data.iloc[0:i, :], data.iloc[i+1:, :]  # TODO: Don't assume there won't be two earthquakes in one chunk
-            else:
-                prev_time = current_time
-        else:
-            return data, None  # No earthquake occurred
-
-    def _save_eq(self, data, file_name, index):
-        """
-        Saves a data frame "data" as a csv file starting with "file_name" followed by index. Returns the nest index.
-            :param data: Data frame to be saved.
-            :param file_name: First part of the name under which to save the data.
-            :param index: Number to add after file_name.
-            :return next_index: Following index to be used.
-        """
-        ppg.log_debug("Saving data... (this might take a few seconds)")
-        new_name = file_name + str(index) + fmd.EXPECTED_FILE_EXTENSION
-        data.to_csv(new_name, index=False)
-        next_index = index+1
-        return next_index
-
-    def _is_split_on_eq(self, buffer, chunk):
-        """
-        Checks if an earthquake occurred between buffer(dataframe) and chunk(dataframe).
-            :param buffer: Data frame occurring first.
-            :param chunk: Data frame following directly buffer.
-            :return is_split_on_eq: True if there is an earthquake between buffer and chunk, false else.
-        """
-        is_split_on_eq = False
-        if buffer is not None and chunk is not None:
-            if buffer.iloc[-1, fmd.Column.TTF.value] < chunk.iloc[0, fmd.Column.TTF.value]:
-                is_split_on_eq = True
-        return is_split_on_eq
 
     @staticmethod
     def _extension_is_correct(file_name):
