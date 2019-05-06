@@ -17,14 +17,15 @@ ppg.VERBOSE = ppg.VerboseLevel.FRIVOLOUS
 class DataSplitting:
 
     def __init__(self, read_file_name=fmd.default_read_file, output_file_name=fmd.default_output_file):
+
+        pd.options.mode.use_inf_as_na = True  # Data shouldn't be inf
+        self._file_name = None
+
         self.file_name = read_file_name
         self.output_file_name = output_file_name
         self._nb_earthquake = 0  # Number of earthquakes detected over the whole file.
         self._files_size = []  # Number of samples for each earthquake.
-
-        # Earthquake metadata
-        self._md_global = pd.DataFrame([-inf, inf, 0, 0, 0], columns=fmd.DATA_TO_TRACK)
-        self._md_per_eq = pd.DataFrame(columns=fmd.DATA_TO_TRACK)
+        self._metadata = pd.DataFrame([0, -inf, inf, 0, 0, 0], columns=fmd.DATA_TO_TRACK)  # Earthquake metadata
 
     @property
     def read_file_name(self):
@@ -40,12 +41,10 @@ class DataSplitting:
             :param new_file_name: New file to be split later.
         """
         if self._file_exists(new_file_name) and self._extension_is_correct(new_file_name):
-            self._data = None
-            self._data_validity = False
             self._file_name = new_file_name
         else:
-            ppg.log_info("Registering default file_name", fmd.default_read__file)
-            self._file_name = fmd.default_read__file
+            ppg.log_info("Registering default file_name", fmd.default_read_file)
+            self._file_name = fmd.default_read_file
 
     @property
     def output_file_name(self):
@@ -66,14 +65,15 @@ class DataSplitting:
 
         # Iteration variables
         self._nb_earthquake = 0
-        self._files_size = []
         first_iteration = True
         i = 0
+
+        self._metadata[:, 'sum_of_sq'] = None  # Extra column used to compute global stdev
 
         for chunk in pd.read_csv(self.file_name, chunksize=chunk_size):
             ppg.log_frivolity("Iteration", i)
             i += 1
-
+            chunk.dropna(inplace=True)
             # Checks data format once
             if first_iteration:
                 if not self._data_is_correct(chunk):
@@ -121,7 +121,7 @@ class DataSplitting:
         else:
             return data, None  # No earthquake occurred
 
-    def _save_eq(self, data, chunk_data):
+    def _save_eq(self, data):
         """
         Saves a data frame "data" as a csv file starting with "file_name" followed by index. Returns the nest index.
             :param data: Data frame to be saved.
@@ -129,10 +129,46 @@ class DataSplitting:
         """
         ppg.log_debug("Saving data... (this might take a few seconds)")
         new_name = self.output_file_name + str(self._nb_earthquake) + fmd.EXPECTED_FILE_EXTENSION
-        data.dropna(inplace=True)
         data.to_csv(new_name, index=False)
+        self.update_eq_metadata(data)
+
+    def update_global_metadata(self):
+        """
+
+        :return:
+        """
+        ppg.log_info("Computing global metadata.")
+
+        self._metadata.loc['global', 'size'] = self._metadata.loc[:, 'size'].sum()
+        self._metadata.loc['global', 'max'] = self._metadata.loc[:, 'max'].max()
+        self._metadata.loc['global', 'min'] = self._metadata.loc[:, 'min'].min()
+
+        # Trick to save ram while computing mean
+        weighted_sum_means = self._metadata.loc[:, 'size'] * self._metadata.loc[:, 'mean']
+        self._metadata.loc['global', 'mean'] = weighted_sum_means.sum()/self._metadata.loc['global', 'size']
+
+        # Trick to save ram while computing global variance
+        self._metadata.loc['global', 'stdev'] = self._metadata.loc[:, 'sum_of_sq']/self._metadata.loc['global', 'size']\
+                                                - self._metadata.loc['global', 'mean'].pow(2)
+        self._metadata.loc['global', 'stdev'] = self._metadata.loc['global', 'stdev'].pow(1/2)
+
+        # Get rid of column for intermediary result
+        self._metadata.drop(columns='sum_of_sq', inplace=True)
+
+    def update_eq_metadata(self, data):
+        """
+
+        :param data:
+        :return:
+        """
+        ppg.log_info("Computing earthquake metadata")
+        self._metadata.loc[self._nb_earthquake, 'size'] = len(data)
+        self._metadata.loc[self._nb_earthquake, 'max'] = data.iloc[:, fmd.Column.DATA.value].max()
+        self._metadata.loc[self._nb_earthquake, 'min'] = data.iloc[:, fmd.Column.DATA.value].min()
+        self._metadata.loc[self._nb_earthquake, 'mean'] = data.iloc[:, fmd.Column.DATA.value].mean()
+        self._metadata.loc[self._nb_earthquake, 'stdev'] = data.iloc[:, fmd.Column.DATA.value].std()
+        self._metadata.loc[self._nb_earthquake, 'sum_of_sq'] = data.iloc[:, fmd.Column.DATA.value].pow(2).sum()
         self._nb_earthquake += 1
-        self._files_size.append(len(data))
 
     @staticmethod
     def _is_split_on_eq(buffer, chunk):
