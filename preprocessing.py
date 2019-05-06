@@ -4,9 +4,11 @@ This file includes all data pre-processing, parsing and splitting methods to be 
 
 import pandas as pd
 import os
+from math import inf
 
 import files_metadata as fmd
 from papagei import papagei as ppg
+
 
 # Debug options
 ppg.VERBOSE = ppg.VerboseLevel.FRIVOLOUS
@@ -14,23 +16,25 @@ ppg.VERBOSE = ppg.VerboseLevel.FRIVOLOUS
 
 class DataSplitting:
 
-
-
-    def __init__(self, read_file_name=default_read_file, output_file_name=default_output_file):
+    def __init__(self, read_file_name=fmd.default_read_file, output_file_name=fmd.default_output_file):
         self.file_name = read_file_name
         self.output_file_name = output_file_name
         self._nb_earthquake = 0  # Number of earthquakes detected over the whole file.
-        self._file_size = []  # Number of samples for each earthquake.
+        self._files_size = []  # Number of samples for each earthquake.
+
+        # Earthquake metadata
+        self._md_global = pd.DataFrame([-inf, inf, 0, 0, 0], columns=fmd.DATA_TO_TRACK)
+        self._md_per_eq = pd.DataFrame(columns=fmd.DATA_TO_TRACK)
 
     @property
-    def file_name(self):
+    def read_file_name(self):
         """
         File to read the data from and to split.
         """
         return self._file_name
 
-    @file_name.setter
-    def file_name(self, new_file_name):
+    @read_file_name.setter
+    def read_file_name(self, new_file_name):
         """
         Checks if the file name provided is correct and, if so changes the reference file to look at.
             :param new_file_name: New file to be split later.
@@ -40,8 +44,8 @@ class DataSplitting:
             self._data_validity = False
             self._file_name = new_file_name
         else:
-            ppg.log_info("Registering default file_name", self.default_file)
-            self._file_name = self.default_file
+            ppg.log_info("Registering default file_name", fmd.default_read__file)
+            self._file_name = fmd.default_read__file
 
     @property
     def output_file_name(self):
@@ -62,7 +66,7 @@ class DataSplitting:
 
         # Iteration variables
         self._nb_earthquake = 0
-        self._file_size = []
+        self._files_size = []
         first_iteration = True
         i = 0
 
@@ -117,7 +121,7 @@ class DataSplitting:
         else:
             return data, None  # No earthquake occurred
 
-    def _save_eq(self, data):
+    def _save_eq(self, data, chunk_data):
         """
         Saves a data frame "data" as a csv file starting with "file_name" followed by index. Returns the nest index.
             :param data: Data frame to be saved.
@@ -125,9 +129,10 @@ class DataSplitting:
         """
         ppg.log_debug("Saving data... (this might take a few seconds)")
         new_name = self.output_file_name + str(self._nb_earthquake) + fmd.EXPECTED_FILE_EXTENSION
+        data.dropna(inplace=True)
         data.to_csv(new_name, index=False)
         self._nb_earthquake += 1
-        self._file_size.append(len(data))
+        self._files_size.append(len(data))
 
     @staticmethod
     def _is_split_on_eq(buffer, chunk):
