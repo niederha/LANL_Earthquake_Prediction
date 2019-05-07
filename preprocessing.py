@@ -101,6 +101,8 @@ class DataSplitting:
                 self._save_eq(buffer)
                 buffer = after_eq.copy()
 
+        self._metadata.to_csv(fmd.META_DATA_FILE, index=False)
+
     def _split_on_eq(self, data):
         """
         Checks the data to find earthquake by looking for positive slope between two consecutive time to failure (TTF).
