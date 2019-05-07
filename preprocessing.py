@@ -3,6 +3,7 @@ This file includes all data pre-processing, parsing and splitting methods to be 
 """
 
 import pandas as pd
+import numpy as np
 import os
 from math import inf
 
@@ -25,7 +26,7 @@ class DataSplitting:
         self.output_file_name = output_file_name
         self._nb_earthquake = 0  # Number of earthquakes detected over the whole file.
         self._files_size = []  # Number of samples for each earthquake.
-        self._metadata = pd.DataFrame([0, -inf, inf, 0, 0, 0], columns=fmd.DATA_TO_TRACK)  # Earthquake metadata
+        self._metadata = pd.DataFrame(np.array([[0, -inf, inf, 0, 0, 0]]), columns=fmd.DATA_TO_TRACK)  # Earthquake metadata
 
     @property
     def read_file_name(self):
@@ -68,8 +69,6 @@ class DataSplitting:
         self._nb_earthquake = 0
         first_iteration = True
         i = 0
-
-        self._metadata[:, 'sum_of_sq'] = None  # Extra column used to compute global stdev
 
         for chunk in pd.read_csv(self.file_name, chunksize=chunk_size):
             ppg.log_frivolity("Iteration", i)
