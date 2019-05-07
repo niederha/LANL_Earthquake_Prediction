@@ -58,6 +58,7 @@ class DataSplitting:
         """
         Goes through the file designated by self.file_name. Identifies earthquakes and save them in separated files
         named "self.output_file_name+earthquake_number+.csv".
+        Extract metadata from the original file: size, mean, standard_deviation,...
         """
 
         chunk_size = 10**6  # Number of lines to be read from the raw file at once. Reduce to spare RAM
@@ -132,10 +133,23 @@ class DataSplitting:
         data.to_csv(new_name, index=False)
         self.update_eq_metadata(data)
 
+    def update_eq_metadata(self, data):
+        """
+        Computes the metadata for a signle earthquage and saves it in self._metadata
+        :param data: Data frame containing one full earthquake.
+        """
+        ppg.log_info("Computing earthquake metadata")
+        self._metadata.loc[self._nb_earthquake, 'size'] = len(data)
+        self._metadata.loc[self._nb_earthquake, 'max'] = data.iloc[:, fmd.Column.DATA.value].max()
+        self._metadata.loc[self._nb_earthquake, 'min'] = data.iloc[:, fmd.Column.DATA.value].min()
+        self._metadata.loc[self._nb_earthquake, 'mean'] = data.iloc[:, fmd.Column.DATA.value].mean()
+        self._metadata.loc[self._nb_earthquake, 'stdev'] = data.iloc[:, fmd.Column.DATA.value].std()
+        self._metadata.loc[self._nb_earthquake, 'sum_of_sq'] = data.iloc[:, fmd.Column.DATA.value].pow(2).sum()
+        self._nb_earthquake += 1
+
     def update_global_metadata(self):
         """
-
-        :return:
+        Once the metadata for each earthquake is filled up, extrapolates the metadata for the whole original file.
         """
         ppg.log_info("Computing global metadata.")
 
@@ -154,21 +168,6 @@ class DataSplitting:
 
         # Get rid of column for intermediary result
         self._metadata.drop(columns='sum_of_sq', inplace=True)
-
-    def update_eq_metadata(self, data):
-        """
-
-        :param data:
-        :return:
-        """
-        ppg.log_info("Computing earthquake metadata")
-        self._metadata.loc[self._nb_earthquake, 'size'] = len(data)
-        self._metadata.loc[self._nb_earthquake, 'max'] = data.iloc[:, fmd.Column.DATA.value].max()
-        self._metadata.loc[self._nb_earthquake, 'min'] = data.iloc[:, fmd.Column.DATA.value].min()
-        self._metadata.loc[self._nb_earthquake, 'mean'] = data.iloc[:, fmd.Column.DATA.value].mean()
-        self._metadata.loc[self._nb_earthquake, 'stdev'] = data.iloc[:, fmd.Column.DATA.value].std()
-        self._metadata.loc[self._nb_earthquake, 'sum_of_sq'] = data.iloc[:, fmd.Column.DATA.value].pow(2).sum()
-        self._nb_earthquake += 1
 
     @staticmethod
     def _is_split_on_eq(buffer, chunk):
