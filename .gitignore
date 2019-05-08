@@ -6,3 +6,6 @@ __pycache__/
 Data/
 *.csv
 *.zip
+
+# Used to acess papagei on systems w/o downloading it
+papagei/*
