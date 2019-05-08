@@ -78,7 +78,7 @@ class NetworkLSTM:
         # Dense output layers
         self.model.add(Dense(32, activation='relu'))
         self.model.add(Dropout(self.dropout_rate))
-        self.model.add(Dense(10, activation='relu'))
+        self.model.add(Dense(1, activation='relu'))
 
         opt = tf.keras.optimizers.Adam(lr=self.learning_rate)
 
